@@ -5,7 +5,9 @@ import { getSession } from '@/lib/auth'
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.isBanned) return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
+
+  const user = await prisma.user.findUnique({ where: { id: session.id }, select: { isBanned: true } })
+  if (user?.isBanned) return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
 
   const { option, amount, utrNumber } = await req.json()
 
