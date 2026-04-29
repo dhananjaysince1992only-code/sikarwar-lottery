@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #F59E0B;
+  --gold-light: #FCD34D;
+  --bg: #080012;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background-color: #080012;
+  background-image: radial-gradient(ellipse at 50% 0%, #1a0533 0%, #080012 60%);
+  min-height: 100vh;
+  color: #F9FAFB;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0f0020; }
+::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 3px; }
+
+/* Gold shimmer button */
+.btn-gold {
+  background: linear-gradient(90deg, #B8860B 0%, #FFD700 30%, #FFF8DC 50%, #FFD700 70%, #B8860B 100%);
+  background-size: 200% auto;
+  color: #1a0a00;
+  font-weight: 900;
+  border: none;
+  cursor: pointer;
+  animation: shimmer 2.5s linear infinite;
+  transition: transform 0.15s, box-shadow 0.15s;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+}
+.btn-gold:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5), 0 0 40px rgba(245, 158, 11, 0.2);
+}
+.btn-gold:active { transform: translateY(0) scale(0.98); }
+
+.btn-purple {
+  background: linear-gradient(135deg, #5b21b6, #7c3aed);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 10px;
+}
+.btn-purple:hover {
+  background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+  box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #991b1b, #dc2626);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 10px;
+}
+.btn-danger:hover { background: linear-gradient(135deg, #b91c1c, #ef4444); }
+
+/* Card styles */
+.card {
+  background: linear-gradient(135deg, #110020 0%, #1a0030 100%);
+  border: 1px solid rgba(109, 40, 217, 0.3);
+  border-radius: 16px;
+}
+
+/* Input style */
+.input-dark {
+  background: #0f0020;
+  border: 1px solid #2d1b5e;
+  color: white;
+  border-radius: 10px;
+  padding: 10px 14px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  font-size: 15px;
+}
+.input-dark:focus { border-color: #7c3aed; box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2); }
+.input-dark::placeholder { color: #4b5563; }
+
+/* Glow text */
+.text-glow-gold {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.8), 0 0 20px rgba(245, 158, 11, 0.4);
+}
+
+/* Prize number display */
+.ticket-number {
+  font-family: 'Courier New', monospace;
+  font-weight: 900;
+  font-size: 2.5rem;
+  letter-spacing: 0.3em;
+  background: linear-gradient(135deg, #F59E0B, #FCD34D, #F59E0B);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Admin sidebar */
+.admin-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+.admin-link:hover { background: rgba(124, 58, 237, 0.15); color: white; }
+.admin-link.active { background: rgba(124, 58, 237, 0.25); color: #a78bfa; border-left: 3px solid #7c3aed; }
+
+/* Status badges */
+.badge-pending { background: rgba(245, 158, 11, 0.15); color: #F59E0B; border: 1px solid rgba(245, 158, 11, 0.3); }
+.badge-approved { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+.badge-rejected { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+/* Table */
+.admin-table { width: 100%; border-collapse: collapse; }
+.admin-table th { padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; border-bottom: 1px solid #1f0a3f; }
+.admin-table td { padding: 12px 14px; border-bottom: 1px solid #0f0020; font-size: 14px; color: #d1d5db; }
+.admin-table tr:hover td { background: rgba(124, 58, 237, 0.05); }
+
+/* Confetti overlay */
+@keyframes confettiFall {
+  0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  top: -20px;
+  animation: confettiFall 3s ease-in forwards;
+  z-index: 9999;
+  border-radius: 2px;
+}

@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String
+  isAdmin      Boolean       @default(false)
+  isBanned     Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  tickets      Ticket[]
+  questionBets QuestionBet[]
+}
+
+model Lottery {
+  id              String          @id @default(cuid())
+  name            String
+  description     String          @default("")
+  ticketPrice     Float
+  maxParticipants Int
+  winPercent      Float           @default(20)
+  poolPercent     Float           @default(70)
+  status          String          @default("ACTIVE")
+  scratchDelay    Int             @default(0)
+  triggeredAt     DateTime?
+  scratchOpenAt   DateTime?
+  createdAt       DateTime        @default(now())
+  upiId           String          @default("")
+  qrImage         String          @default("")
+  tickets         Ticket[]
+  prizeTiers      PrizeTier[]
+  winningNumbers  WinningNumber[]
+}
+
+model PrizeTier {
+  id          String  @id @default(cuid())
+  lotteryId   String
+  lottery     Lottery @relation(fields: [lotteryId], references: [id], onDelete: Cascade)
+  tierName    String
+  winnerCount Int
+  amount      Float
+  rank        Int
+}
+
+model Ticket {
+  id                 String    @id @default(cuid())
+  lotteryId          String
+  lottery            Lottery   @relation(fields: [lotteryId], references: [id])
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  ticketNumber       String    @default("")
+  utrNumber          String
+  utrStatus          String    @default("PENDING")
+  utrRejectionReason String    @default("")
+  scratchedAt        DateTime?
+  isWinner           Boolean?
+  prizeAmount        Float?
+  tierName           String    @default("")
+  claimUpiId         String    @default("")
+  payoutStatus       String    @default("UNPAID")
+  paidAt             DateTime?
+  paymentRef         String    @default("")
+  createdAt          DateTime  @default(now())
+}
+
+model WinningNumber {
+  id          String  @id @default(cuid())
+  lotteryId   String
+  lottery     Lottery @relation(fields: [lotteryId], references: [id])
+  number      String
+  prizeAmount Float
+  tierName    String
+  rank        Int
+  winnerName  String  @default("")
+  ticketId    String  @default("")
+}
+
+// --- Prediction Market ---
+
+model Question {
+  id            String        @id @default(cuid())
+  question      String
+  description   String        @default("")
+  optionA       String
+  optionB       String
+  status        String        @default("OPEN")   // OPEN | RESOLVED
+  winningOption String        @default("")        // "A" | "B"
+  commission    Float         @default(5)         // % taken as house fee (editable)
+  upiId         String        @default("")
+  qrImage       String        @default("")
+  createdAt     DateTime      @default(now())
+  resolvedAt    DateTime?
+  bets          QuestionBet[]
+}
+
+model QuestionBet {
+  id           String    @id @default(cuid())
+  questionId   String
+  question     Question  @relation(fields: [questionId], references: [id])
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  option       String    // "A" or "B"
+  amount       Float
+  utrNumber    String
+  utrStatus    String    @default("PENDING")  // PENDING | APPROVED | REJECTED
+  utrRejectionReason String @default("")
+  payout       Float?
+  payoutStatus String    @default("UNPAID")   // UNPAID | CLAIMED | PAID
+  claimUpiId   String    @default("")
+  paidAt       DateTime?
+  paymentRef   String    @default("")
+  createdAt    DateTime  @default(now())
+}
+
+model SiteSetting {
+  key   String @id
+  value String
+}
