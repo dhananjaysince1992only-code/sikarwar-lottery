@@ -32,6 +32,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-6">
           <Link href="/" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">Lottery</Link>
           <Link href="/predictions" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">Predict</Link>
+          <Link href="/leaderboard" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">Leaderboard</Link>
           {user && <Link href="/tickets" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">My Tickets</Link>}
           {user?.isAdmin && <Link href="/admin" className="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">Admin</Link>}
 
@@ -63,6 +64,7 @@ export default function Navbar() {
         <div className="md:hidden border-t border-purple-900/40 bg-casino-900 px-4 py-4 flex flex-col gap-4">
           <Link href="/" onClick={() => setOpen(false)} className="text-gray-300">Lottery</Link>
           <Link href="/predictions" onClick={() => setOpen(false)} className="text-gray-300">Predict</Link>
+          <Link href="/leaderboard" onClick={() => setOpen(false)} className="text-gray-300">Leaderboard</Link>
           {user && <Link href="/tickets" onClick={() => setOpen(false)} className="text-gray-300">My Tickets</Link>}
           {user?.isAdmin && <Link href="/admin" onClick={() => setOpen(false)} className="text-purple-400 font-bold">Admin Panel</Link>}
           {user ? (
