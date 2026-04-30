@@ -22,11 +22,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   })
   if (user?.isBanned) return NextResponse.json({ error: 'Account suspended' }, { status: 403 })
 
-  const existing = await prisma.questionBet.findFirst({
-    where: { questionId: params.id, userId: session.id, utrStatus: { not: 'REJECTED' } },
-  })
-  if (existing) return NextResponse.json({ error: 'You already placed a bet on this question' }, { status: 400 })
-
   // --- Wallet payment ---
   if (payFromWallet) {
     const balance = user?.balance ?? 0
