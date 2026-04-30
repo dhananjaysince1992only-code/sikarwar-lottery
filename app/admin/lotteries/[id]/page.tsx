@@ -66,6 +66,8 @@ export default function AdminLotteryDetail() {
   const scaleFactor = lottery.maxParticipants > 0 ? approved.length / lottery.maxParticipants : 0
   const isFull = approved.length >= lottery.maxParticipants
   const fillPct = Math.round(scaleFactor * 100)
+  // Same formula as engine: each tier scales so all tiers together = actual prize pool
+  const configuredTotal = lottery.prizeTiers.reduce((s, t) => s + t.amount * t.winnerCount, 0)
 
   return (
     <div>
@@ -105,7 +107,7 @@ export default function AdminLotteryDetail() {
                     <div key={tier.id} className="flex items-center gap-2 text-xs">
                       <span className="text-gray-500 w-24 truncate">{tier.tierName}</span>
                       <span className="text-gray-600 line-through">₹{tier.amount.toLocaleString('en-IN')}</span>
-                      <span className="text-yellow-400 font-bold">→ ₹{Math.floor(tier.amount * scaleFactor).toLocaleString('en-IN')}</span>
+                      <span className="text-yellow-400 font-bold">→ ₹{(configuredTotal > 0 ? Math.floor((tier.amount / configuredTotal) * actualPrizePool) : 0).toLocaleString('en-IN')}</span>
                     </div>
                   ))}
                 </div>

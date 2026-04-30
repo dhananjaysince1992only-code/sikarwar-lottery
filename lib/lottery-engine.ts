@@ -27,7 +27,10 @@ export async function triggerDraw(lotteryId: string) {
   const totalPool = approved.length * lottery.ticketPrice
   const prizePool = totalPool * (lottery.poolPercent / 100)
   const winnerCount = Math.max(1, Math.floor(approved.length * (lottery.winPercent / 100)))
-  const scaleFactor = approved.length / lottery.maxParticipants
+
+  // Sum of all configured per-winner amounts across tiers (used as weight denominator)
+  // This lets us distribute the actual prize pool proportionally regardless of fill level
+  const configuredTotal = lottery.prizeTiers.reduce((s, t) => s + t.amount * t.winnerCount, 0)
 
   const shuffled = shuffle(approved)
   const winners = shuffled.slice(0, winnerCount)
@@ -38,8 +41,14 @@ export async function triggerDraw(lotteryId: string) {
   }[] = []
 
   let winnerIdx = 0
+  let distributedAmount = 0
+
   for (const tier of lottery.prizeTiers) {
-    const scaledAmount = Math.floor(tier.amount * scaleFactor)
+    // Scale each tier's per-winner amount so that ALL tiers together sum to actual prizePool
+    const tierPerWinner = configuredTotal > 0
+      ? Math.floor((tier.amount / configuredTotal) * prizePool)
+      : Math.floor(prizePool / Math.max(winnerCount, 1))
+
     const count = Math.min(tier.winnerCount, winnerCount - winnerIdx)
     for (let i = 0; i < count; i++) {
       if (winnerIdx >= winners.length) break
@@ -47,34 +56,40 @@ export async function triggerDraw(lotteryId: string) {
       const num = generateTicketNumber()
       await prisma.ticket.update({
         where: { id: ticket.id },
-        data: { ticketNumber: num, isWinner: true, prizeAmount: scaledAmount, tierName: tier.tierName },
+        data: { ticketNumber: num, isWinner: true, prizeAmount: tierPerWinner, tierName: tier.tierName },
       })
       winningNumbers.push({
         lotteryId,
         number: num,
-        prizeAmount: scaledAmount,
+        prizeAmount: tierPerWinner,
         tierName: tier.tierName,
         rank: tier.rank,
         ticketId: ticket.id,
       })
+      distributedAmount += tierPerWinner
       winnerIdx++
     }
   }
 
-  // Remaining winners beyond configured tiers get proportional consolation
-  while (winnerIdx < winners.length) {
-    const ticket = winners[winnerIdx]
-    const consolation = Math.floor((prizePool * 0.05 * scaleFactor) / Math.max(1, winners.length - winnerIdx))
-    const num = generateTicketNumber()
-    await prisma.ticket.update({
-      where: { id: ticket.id },
-      data: { ticketNumber: num, isWinner: true, prizeAmount: consolation, tierName: 'Consolation' },
-    })
-    winningNumbers.push({ lotteryId, number: num, prizeAmount: consolation, tierName: 'Consolation', rank: 99, ticketId: ticket.id })
-    winnerIdx++
+  // Any winners beyond configured tiers share the remaining prize pool as consolation
+  if (winnerIdx < winners.length) {
+    const remainingPool = Math.max(0, Math.floor(prizePool - distributedAmount))
+    const consolationCount = winners.length - winnerIdx
+    const consolationPerWinner = consolationCount > 0 ? Math.floor(remainingPool / consolationCount) : 0
+
+    while (winnerIdx < winners.length) {
+      const ticket = winners[winnerIdx]
+      const num = generateTicketNumber()
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { ticketNumber: num, isWinner: true, prizeAmount: consolationPerWinner, tierName: 'Consolation' },
+      })
+      winningNumbers.push({ lotteryId, number: num, prizeAmount: consolationPerWinner, tierName: 'Consolation', rank: 99, ticketId: ticket.id })
+      winnerIdx++
+    }
   }
 
-  // Losers get numbers too (hidden, not in winningNumbers)
+  // Losers get ticket numbers too (not in winningNumbers)
   for (const ticket of losers) {
     await prisma.ticket.update({
       where: { id: ticket.id },
