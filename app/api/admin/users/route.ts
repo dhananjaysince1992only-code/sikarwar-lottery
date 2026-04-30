@@ -13,7 +13,6 @@ export async function GET() {
         select: {
           tickets: { where: { utrStatus: 'APPROVED' } },
           questionBets: { where: { utrStatus: 'APPROVED' } },
-          colorBets: { where: { utrStatus: 'APPROVED' } },
         },
       },
     },

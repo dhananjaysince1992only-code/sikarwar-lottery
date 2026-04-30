@@ -76,14 +76,11 @@ export default function WalletPage() {
           ₹{(data?.balance ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
         </div>
         <div className="flex gap-3 mt-4">
-          <a href="/crash" className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-300 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition-colors">
-            🚀 Crash
+          <a href="/" className="text-xs bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-3 py-1.5 rounded-lg hover:bg-yellow-500/20 transition-colors">
+            🎰 Lottery
           </a>
-          <a href="/dice" className="text-xs bg-blue-500/20 border border-blue-500/30 text-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-500/30 transition-colors">
-            🎲 Dice
-          </a>
-          <a href="/color-game" className="text-xs bg-violet-500/20 border border-violet-500/30 text-violet-300 px-3 py-1.5 rounded-lg hover:bg-violet-500/30 transition-colors">
-            🎨 Colors
+          <a href="/predictions" className="text-xs bg-purple-500/20 border border-purple-500/30 text-purple-300 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition-colors">
+            🔮 Predict
           </a>
         </div>
       </div>

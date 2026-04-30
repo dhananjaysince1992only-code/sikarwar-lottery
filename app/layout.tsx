@@ -12,9 +12,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Navbar />
-        <main className="min-h-[calc(100vh-64px)]">{children}</main>
-        <footer className="border-t border-purple-900/30 text-center py-6 text-gray-700 text-xs">
-          © 2024 Sikarwar Lottery · Play Responsibly · 18+ Only
+        <main className="min-h-[calc(100vh-56px)] pb-16 md:pb-0">{children}</main>
+        <footer className="hidden md:block border-t border-white/5 text-center py-5 text-gray-700 text-xs">
+          © 2024 Sikarwar · Play Responsibly · 18+ Only
         </footer>
       </body>
     </html>

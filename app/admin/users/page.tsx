@@ -5,7 +5,7 @@ import Link from 'next/link'
 interface User {
   id: string; name: string; email: string; isAdmin: boolean; isBanned: boolean
   createdAt: string
-  _count: { tickets: number; questionBets: number; colorBets: number }
+  _count: { tickets: number; questionBets: number }
 }
 
 export default function UsersPage() {
@@ -55,7 +55,6 @@ export default function UsersPage() {
                 <th>Email</th>
                 <th title="Approved lottery tickets">🎰 Lottery</th>
                 <th title="Approved prediction bets">🔮 Predict</th>
-                <th title="Approved color bets">🎨 Color</th>
                 <th>Joined</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -81,11 +80,6 @@ export default function UsersPage() {
                   <td className="text-center">
                     <span className={u._count.questionBets > 0 ? 'text-blue-300 font-bold' : 'text-gray-700'}>
                       {u._count.questionBets}
-                    </span>
-                  </td>
-                  <td className="text-center">
-                    <span className={u._count.colorBets > 0 ? 'text-violet-300 font-bold' : 'text-gray-700'}>
-                      {u._count.colorBets}
                     </span>
                   </td>
                   <td className="text-gray-600 text-xs">{new Date(u.createdAt).toLocaleDateString('en-IN')}</td>

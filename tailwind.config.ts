@@ -60,6 +60,11 @@ const config: Config = {
       },
     },
   },
+  safelist: [
+    'bg-white/2', 'bg-white/3', 'bg-white/4', 'bg-white/5', 'bg-white/8',
+    'border-white/5', 'border-white/6', 'border-white/8', 'border-white/10', 'border-white/15',
+    'from-white/4', 'from-white/5',
+  ],
   plugins: [],
 }
 

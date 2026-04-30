@@ -20,10 +20,6 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         include: { question: { select: { question: true, optionA: true, optionB: true } } },
         orderBy: { createdAt: 'desc' },
       },
-      colorBets: {
-        include: { round: { select: { title: true, result: true } } },
-        orderBy: { createdAt: 'desc' },
-      },
     },
   })
 
@@ -31,13 +27,11 @@ export default async function AdminUserDetail({ params }: { params: { id: string
 
   const totalSpent =
     user.tickets.filter(t => t.utrStatus === 'APPROVED').reduce((s, t) => s + (t.lottery.ticketPrice ?? 0), 0) +
-    user.questionBets.filter(b => b.utrStatus === 'APPROVED').reduce((s, b) => s + b.amount, 0) +
-    user.colorBets.filter(b => b.utrStatus === 'APPROVED').reduce((s, b) => s + b.amount, 0)
+    user.questionBets.filter(b => b.utrStatus === 'APPROVED').reduce((s, b) => s + b.amount, 0)
 
   const totalWon =
     user.tickets.filter(t => t.isWinner).reduce((s, t) => s + (t.prizeAmount ?? 0), 0) +
-    user.questionBets.filter(b => b.payout).reduce((s, b) => s + (b.payout ?? 0), 0) +
-    user.colorBets.filter(b => b.payout).reduce((s, b) => s + (b.payout ?? 0), 0)
+    user.questionBets.filter(b => b.payout).reduce((s, b) => s + (b.payout ?? 0), 0)
 
   return (
     <div>
@@ -45,7 +39,6 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         <Link href="/admin/users" className="text-gray-600 hover:text-gray-400 text-sm">← Users</Link>
       </div>
 
-      {/* User header */}
       <div className="card p-6 mb-6">
         <div className="flex items-start justify-between">
           <div>
@@ -61,13 +54,12 @@ export default async function AdminUserDetail({ params }: { params: { id: string
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-5">
           {[
             { label: 'Total Spent', value: `₹${totalSpent.toLocaleString('en-IN')}`, color: 'text-red-400' },
             { label: 'Total Won', value: `₹${totalWon.toLocaleString('en-IN')}`, color: 'text-green-400' },
             { label: 'Net P&L', value: `₹${(totalWon - totalSpent).toLocaleString('en-IN')}`, color: totalWon >= totalSpent ? 'text-green-400' : 'text-red-400' },
-            { label: 'Games Played', value: String(user.tickets.length + user.questionBets.length + user.colorBets.length), color: 'text-gold-400' },
+            { label: 'Games Played', value: String(user.tickets.length + user.questionBets.length), color: 'text-gold-400' },
           ].map(s => (
             <div key={s.label} className="bg-casino-950 rounded-xl p-3 text-center">
               <div className={`font-black text-lg ${s.color}`}>{s.value}</div>
@@ -77,7 +69,6 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         </div>
       </div>
 
-      {/* Lottery tickets */}
       {user.tickets.length > 0 && (
         <div className="card overflow-hidden mb-6">
           <div className="p-4 border-b border-gray-900 flex items-center gap-2">
@@ -105,7 +96,6 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         </div>
       )}
 
-      {/* Prediction bets */}
       {user.questionBets.length > 0 && (
         <div className="card overflow-hidden mb-6">
           <div className="p-4 border-b border-gray-900 flex items-center gap-2">
@@ -118,9 +108,7 @@ export default async function AdminUserDetail({ params }: { params: { id: string
               <tbody>
                 {user.questionBets.map(b => (
                   <tr key={b.id}>
-                    <td className="max-w-xs">
-                      <span className="text-blue-300 text-sm line-clamp-1">{b.question.question}</span>
-                    </td>
+                    <td className="max-w-xs"><span className="text-blue-300 text-sm line-clamp-1">{b.question.question}</span></td>
                     <td><span className={`font-bold text-sm ${b.option === 'A' ? 'text-green-400' : 'text-red-400'}`}>{b.option === 'A' ? b.question.optionA : b.question.optionB}</span></td>
                     <td className="font-bold">₹{b.amount.toLocaleString('en-IN')}</td>
                     <td><span className="font-mono text-xs text-yellow-300">{b.utrNumber}</span></td>
@@ -135,44 +123,8 @@ export default async function AdminUserDetail({ params }: { params: { id: string
         </div>
       )}
 
-      {/* Color game bets */}
-      {user.colorBets.length > 0 && (
-        <div className="card overflow-hidden mb-6">
-          <div className="p-4 border-b border-gray-900 flex items-center gap-2">
-            <span className="text-xl">🎨</span>
-            <h3 className="text-gold-400 font-bold">Color Game Bets ({user.colorBets.length})</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="admin-table">
-              <thead><tr><th>Round</th><th>Color</th><th>Amount</th><th>Result</th><th>Status</th><th>Payout</th><th>Date</th></tr></thead>
-              <tbody>
-                {user.colorBets.map(b => {
-                  const colorText: Record<string, string> = { red: 'text-red-400', green: 'text-green-400', violet: 'text-violet-400' }
-                  const won = b.round.result && b.color === b.round.result
-                  return (
-                    <tr key={b.id}>
-                      <td className="text-violet-300">{b.round.title}</td>
-                      <td><span className={`font-bold capitalize ${colorText[b.color] ?? 'text-gray-400'}`}>{b.color}</span></td>
-                      <td className="font-bold">₹{b.amount.toLocaleString('en-IN')}</td>
-                      <td>
-                        {b.round.result ? (
-                          won ? <span className="text-green-400 font-bold">✓ Won</span> : <span className="text-gray-600 text-xs">Lost ({b.round.result})</span>
-                        ) : <span className="text-gray-700 text-xs">Pending</span>}
-                      </td>
-                      <td><span className={`text-xs px-2 py-0.5 rounded-full ${b.utrStatus === 'APPROVED' ? 'badge-approved' : b.utrStatus === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>{b.utrStatus}</span></td>
-                      <td className="text-gold-400 font-bold">{b.payout ? `₹${b.payout.toLocaleString('en-IN')}` : '—'}</td>
-                      <td className="text-gray-600 text-xs">{new Date(b.createdAt).toLocaleDateString('en-IN')}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {user.tickets.length === 0 && user.questionBets.length === 0 && user.colorBets.length === 0 && (
-        <div className="card p-10 text-center text-gray-600">This user has no game activity yet.</div>
+      {user.tickets.length === 0 && user.questionBets.length === 0 && (
+        <div className="card p-10 text-center text-gray-600">No game activity yet.</div>
       )}
     </div>
   )

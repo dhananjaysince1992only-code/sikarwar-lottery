@@ -68,8 +68,8 @@ body {
 
 /* Card styles */
 .card {
-  background: linear-gradient(135deg, #110020 0%, #1a0030 100%);
-  border: 1px solid rgba(109, 40, 217, 0.3);
+  background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+  border: 1px solid rgba(255,255,255,0.08);
   border-radius: 16px;
 }
 

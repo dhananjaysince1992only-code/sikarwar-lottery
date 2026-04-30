@@ -19,79 +19,132 @@ export default function Navbar() {
     router.push('/')
   }
 
+  const navLinks = [
+    { href: '/', label: 'Lottery', icon: '🎰' },
+    { href: '/predictions', label: 'Predict', icon: '🔮' },
+  ]
+
   return (
-    <nav className="sticky top-0 z-50 border-b border-purple-900/40 bg-casino-900/95 backdrop-blur-md">
-      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="text-2xl">🎰</span>
-          <span className="font-black text-xl bg-gold-shimmer bg-clip-text text-transparent bg-[length:200%_auto] animate-shimmer">
-            Sikarwar Lottery
-          </span>
-        </Link>
+    <>
+      {/* Top navbar */}
+      <nav className="sticky top-0 z-50 border-b border-white/5 bg-casino-900/98 backdrop-blur-md">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center text-sm font-black text-black">S</div>
+            <span className="font-black text-base text-white hidden sm:block">Sikarwar</span>
+          </Link>
 
-        <div className="hidden md:flex items-center gap-5">
-          <Link href="/" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">Lottery</Link>
-          <Link href="/crash" className="text-gray-400 hover:text-orange-400 text-sm font-medium transition-colors">🚀 Crash</Link>
-          <Link href="/dice" className="text-gray-400 hover:text-blue-400 text-sm font-medium transition-colors">🎲 Dice</Link>
-          <Link href="/color-game" className="text-gray-400 hover:text-violet-400 text-sm font-medium transition-colors">🎨 Colors</Link>
-          <Link href="/predictions" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">Predict</Link>
-          <Link href="/leaderboard" className="text-gray-400 hover:text-gold-400 text-sm font-medium transition-colors">🏆</Link>
-          {user?.isAdmin && <Link href="/admin" className="text-purple-400 hover:text-purple-300 text-sm font-bold transition-colors">Admin</Link>}
-
-          {user === undefined ? (
-            <div className="w-16 h-4 bg-gray-800 rounded animate-pulse" />
-          ) : user ? (
-            <div className="flex items-center gap-3">
-              <Link href="/wallet" className="flex items-center gap-1.5 bg-casino-800 border border-yellow-700/30 hover:border-yellow-500/50 px-3 py-1.5 rounded-lg transition-colors">
-                <span className="text-gold-400 font-black text-sm">₹{(user.balance ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-                <span className="text-gray-600 text-xs">+</span>
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-1">
+            {navLinks.map(l => (
+              <Link key={l.href} href={l.href}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${pathname === l.href ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+                {l.label}
               </Link>
-              <span className="text-gray-500 text-sm">{user.name.split(' ')[0]}</span>
-              <button onClick={logout} className="text-xs bg-red-900/30 hover:bg-red-900/50 text-red-400 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="flex gap-3">
-              <Link href="/login" className="text-sm text-gray-300 hover:text-white transition-colors px-3 py-1.5">Login</Link>
-              <Link href="/register" className="btn-gold text-sm px-4 py-1.5 rounded-lg">Register</Link>
-            </div>
-          )}
-        </div>
-
-        <button className="md:hidden text-gray-400" onClick={() => setOpen(!open)}>
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
-          </svg>
-        </button>
-      </div>
-
-      {open && (
-        <div className="md:hidden border-t border-purple-900/40 bg-casino-900 px-4 py-4 flex flex-col gap-4">
-          {user && (
-            <Link href="/wallet" onClick={() => setOpen(false)} className="flex items-center justify-between bg-casino-800 border border-yellow-700/30 px-4 py-3 rounded-xl">
-              <span className="text-gray-400 text-sm">Balance</span>
-              <span className="text-gold-400 font-black">₹{(user.balance ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+            ))}
+            <Link href="/leaderboard" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${pathname === '/leaderboard' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
+              Leaderboard
             </Link>
-          )}
-          <Link href="/" onClick={() => setOpen(false)} className="text-gray-300">🎰 Lottery</Link>
-          <Link href="/crash" onClick={() => setOpen(false)} className="text-orange-400 font-medium">🚀 Crash</Link>
-          <Link href="/dice" onClick={() => setOpen(false)} className="text-blue-400 font-medium">🎲 Dice</Link>
-          <Link href="/color-game" onClick={() => setOpen(false)} className="text-violet-400 font-medium">🎨 Colors</Link>
-          <Link href="/predictions" onClick={() => setOpen(false)} className="text-gray-300">🔮 Predict</Link>
-          <Link href="/leaderboard" onClick={() => setOpen(false)} className="text-gray-300">🏆 Leaderboard</Link>
-          {user && <Link href="/tickets" onClick={() => setOpen(false)} className="text-gray-300">🎫 My Tickets</Link>}
-          {user?.isAdmin && <Link href="/admin" onClick={() => setOpen(false)} className="text-purple-400 font-bold">⚙️ Admin Panel</Link>}
-          {user ? (
-            <button onClick={() => { logout(); setOpen(false) }} className="text-red-400 text-left font-medium">Logout</button>
-          ) : (
-            <>
-              <Link href="/login" onClick={() => setOpen(false)} className="text-gray-300">Login</Link>
-              <Link href="/register" onClick={() => setOpen(false)} className="text-gold-400 font-bold">Register</Link>
-            </>
-          )}
+          </div>
+
+          {/* Right side */}
+          <div className="flex items-center gap-2">
+            {user === undefined ? (
+              <div className="w-20 h-8 bg-white/5 rounded-lg animate-pulse" />
+            ) : user ? (
+              <>
+                {user.isAdmin && (
+                  <Link href="/admin" className="hidden md:flex text-xs bg-purple-500/20 border border-purple-500/30 text-purple-300 px-3 py-1.5 rounded-lg font-bold hover:bg-purple-500/30 transition-colors">
+                    Admin
+                  </Link>
+                )}
+                <Link href="/wallet" className="flex items-center gap-2 bg-white/5 border border-white/10 hover:border-yellow-500/40 px-3 py-1.5 rounded-lg transition-all group">
+                  <span className="text-xs text-gray-500 group-hover:text-gray-400">₹</span>
+                  <span className="text-gold-400 font-black text-sm">{(user.balance ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                  <span className="text-green-500 text-xs font-black leading-none">+</span>
+                </Link>
+                <div className="hidden md:flex items-center gap-2">
+                  <span className="text-gray-400 text-sm font-medium">{user.name.split(' ')[0]}</span>
+                  <button onClick={logout} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">
+                    Sign out
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 hidden sm:block">
+                  Login
+                </Link>
+                <Link href="/register" className="btn-gold text-sm px-4 py-2 rounded-lg font-black">
+                  Register
+                </Link>
+              </div>
+            )}
+
+            {/* Mobile hamburger */}
+            <button className="md:hidden text-gray-400 hover:text-white p-1" onClick={() => setOpen(!open)}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? 'M6 18L18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} />
+              </svg>
+            </button>
+          </div>
         </div>
-      )}
-    </nav>
+
+        {/* Mobile dropdown */}
+        {open && (
+          <div className="md:hidden border-t border-white/5 bg-casino-900 px-4 py-3 flex flex-col gap-1">
+            {navLinks.map(l => (
+              <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors ${pathname === l.href ? 'bg-white/10 text-white' : 'text-gray-400'}`}>
+                <span>{l.icon}</span>{l.label}
+              </Link>
+            ))}
+            <Link href="/leaderboard" onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-400">
+              <span>🏆</span>Leaderboard
+            </Link>
+            {user && (
+              <Link href="/tickets" onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-400">
+                <span>🎫</span>My Tickets
+              </Link>
+            )}
+            {user?.isAdmin && (
+              <Link href="/admin" onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-purple-400">
+                <span>⚙️</span>Admin Panel
+              </Link>
+            )}
+            {user ? (
+              <button onClick={() => { logout(); setOpen(false) }} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-red-400 text-left mt-1 border-t border-white/5 pt-3">
+                Sign out
+              </button>
+            ) : (
+              <Link href="/login" onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold text-gray-400">
+                Login
+              </Link>
+            )}
+          </div>
+        )}
+      </nav>
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-casino-900/98 backdrop-blur-md border-t border-white/5">
+        <div className="grid grid-cols-4 h-16">
+          {[
+            { href: '/', icon: '🎰', label: 'Lottery' },
+            { href: '/predictions', icon: '🔮', label: 'Predict' },
+            { href: '/wallet', icon: '💳', label: 'Wallet' },
+            { href: user ? '/tickets' : '/login', icon: user ? '🎫' : '👤', label: user ? 'Tickets' : 'Account' },
+          ].map(item => (
+            <Link key={item.href} href={item.href}
+              className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
+                pathname === item.href ? 'text-white' : 'text-gray-600 hover:text-gray-300'
+              }`}>
+              <span className="text-xl leading-none">{item.icon}</span>
+              <span className={`text-[10px] font-semibold ${pathname === item.href ? 'text-gold-400' : ''}`}>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      </nav>
+    </>
   )
 }
