@@ -3,11 +3,15 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
+interface PrizeTier {
+  id: string; tierName: string; winnerCount: number; amount: number; rank: number
+}
+
 interface Lottery {
   id: string; name: string; description: string; ticketPrice: number; maxParticipants: number
   winPercent: number; poolPercent: number; status: string; scratchDelay: number
   upiId: string; qrImage: string
-  prizeTiers: { id: string; tierName: string; winnerCount: number; amount: number; rank: number }[]
+  prizeTiers: PrizeTier[]
   winningNumbers: { id: string; number: string; prizeAmount: number; tierName: string; winnerName: string }[]
   tickets: { id: string; utrNumber: string; utrStatus: string; user: { name: string; email: string }; isWinner: boolean | null; prizeAmount: number | null; scratchedAt: string | null; payoutStatus: string }[]
 }
@@ -17,6 +21,7 @@ export default function AdminLotteryDetail() {
   const [lottery, setLottery] = useState<Lottery | null>(null)
   const [triggering, setTriggering] = useState(false)
   const [msg, setMsg] = useState('')
+  const [msgType, setMsgType] = useState<'ok' | 'err'>('ok')
 
   const load = async () => {
     const res = await fetch(`/api/admin/lotteries/${id}`)
@@ -27,12 +32,27 @@ export default function AdminLotteryDetail() {
   useEffect(() => { load() }, [id])
 
   const triggerDraw = async () => {
-    if (!confirm('Trigger the draw now? This will lock the lottery and assign winners.')) return
+    if (!lottery) return
+    const isFull = approved.length >= lottery.maxParticipants
+    const scaleFactor = approved.length / lottery.maxParticipants
+    const scaledPool = Math.round(fullPrizePool * scaleFactor)
+
+    const confirmMsg = isFull
+      ? `Trigger draw for ${approved.length} participants? Prize pool: ₹${fullPrizePool.toLocaleString('en-IN')}. This cannot be undone.`
+      : `Only ${approved.length}/${lottery.maxParticipants} slots filled.\n\nPrize pool will be ₹${scaledPool.toLocaleString('en-IN')} (proportional to ${Math.round(scaleFactor * 100)}% fill).\n\nProceed with partial draw?`
+
+    if (!confirm(confirmMsg)) return
     setTriggering(true)
     const res = await fetch(`/api/admin/lotteries/${id}/trigger`, { method: 'POST' })
     const data = await res.json()
     setTriggering(false)
-    setMsg(data.ok ? `Draw done! ${data.winnerCount} winners selected, ₹${data.prizePool?.toLocaleString('en-IN')} prize pool.` : data.error)
+    if (data.ok) {
+      setMsgType('ok')
+      setMsg(`Draw complete! ${data.winnerCount} winners selected. Prize pool: ₹${data.prizePool?.toLocaleString('en-IN')}.`)
+    } else {
+      setMsgType('err')
+      setMsg(data.error)
+    }
     load()
   }
 
@@ -41,7 +61,11 @@ export default function AdminLotteryDetail() {
   const approved = lottery.tickets.filter(t => t.utrStatus === 'APPROVED')
   const pending = lottery.tickets.filter(t => t.utrStatus === 'PENDING')
   const totalPool = approved.length * lottery.ticketPrice
-  const prizePool = totalPool * (lottery.poolPercent / 100)
+  const fullPrizePool = lottery.maxParticipants * lottery.ticketPrice * (lottery.poolPercent / 100)
+  const actualPrizePool = totalPool * (lottery.poolPercent / 100)
+  const scaleFactor = lottery.maxParticipants > 0 ? approved.length / lottery.maxParticipants : 0
+  const isFull = approved.length >= lottery.maxParticipants
+  const fillPct = Math.round(scaleFactor * 100)
 
   return (
     <div>
@@ -55,7 +79,41 @@ export default function AdminLotteryDetail() {
         }`}>{lottery.status}</span>
       </div>
 
-      {msg && <div className="mb-4 bg-green-900/20 border border-green-700/40 rounded-xl px-4 py-3 text-green-400 text-sm">{msg}</div>}
+      {msg && (
+        <div className={`mb-4 rounded-xl px-4 py-3 text-sm border ${
+          msgType === 'ok'
+            ? 'bg-green-900/20 border-green-700/40 text-green-400'
+            : 'bg-red-900/20 border-red-700/40 text-red-400'
+        }`}>{msg}</div>
+      )}
+
+      {/* Partial fill warning */}
+      {lottery.status === 'ACTIVE' && !isFull && approved.length > 0 && (
+        <div className="mb-6 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-yellow-400 text-xl">⚠️</span>
+            <div>
+              <div className="text-yellow-400 font-bold text-sm mb-1">Lottery not yet full — {approved.length}/{lottery.maxParticipants} slots filled ({fillPct}%)</div>
+              <div className="text-gray-400 text-xs leading-relaxed">
+                You can still trigger a draw now. Prizes will be scaled proportionally:<br />
+                Full prize pool: <span className="text-white font-bold">₹{fullPrizePool.toLocaleString('en-IN')}</span> →
+                Actual (at {fillPct}% fill): <span className="text-yellow-400 font-bold">₹{Math.round(actualPrizePool).toLocaleString('en-IN')}</span>
+              </div>
+              {lottery.prizeTiers.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {lottery.prizeTiers.map(tier => (
+                    <div key={tier.id} className="flex items-center gap-2 text-xs">
+                      <span className="text-gray-500 w-24 truncate">{tier.tierName}</span>
+                      <span className="text-gray-600 line-through">₹{tier.amount.toLocaleString('en-IN')}</span>
+                      <span className="text-yellow-400 font-bold">→ ₹{Math.floor(tier.amount * scaleFactor).toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-6">
         {/* Stats */}
@@ -65,10 +123,11 @@ export default function AdminLotteryDetail() {
             {[
               ['Ticket Price', `₹${lottery.ticketPrice}`],
               ['Max Participants', lottery.maxParticipants],
-              ['Approved Tickets', approved.length],
+              ['Approved Tickets', `${approved.length} / ${lottery.maxParticipants}`],
               ['Pending Verification', pending.length],
               ['Total Collected', `₹${totalPool.toLocaleString('en-IN')}`],
-              ['Prize Pool', `₹${prizePool.toLocaleString('en-IN')}`],
+              ['Actual Prize Pool', `₹${Math.round(actualPrizePool).toLocaleString('en-IN')}`],
+              ['Full Prize Pool', `₹${Math.round(fullPrizePool).toLocaleString('en-IN')}`],
               ['Win %', `${lottery.winPercent}%`],
               ['Pool %', `${lottery.poolPercent}%`],
             ].map(([k, v]) => (
@@ -79,17 +138,39 @@ export default function AdminLotteryDetail() {
             ))}
           </div>
 
+          {/* Fill bar */}
+          {lottery.status === 'ACTIVE' && (
+            <div>
+              <div className="flex justify-between text-xs text-gray-600 mb-1">
+                <span>Slots filled</span>
+                <span>{fillPct}%</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${isFull ? 'bg-green-500' : 'bg-yellow-500'}`}
+                  style={{ width: `${Math.min(fillPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {lottery.status === 'ACTIVE' && (
             <button
               onClick={triggerDraw}
               disabled={triggering || approved.length === 0}
-              className="btn-gold w-full py-3 rounded-xl font-black mt-2 disabled:opacity-40"
+              className={`w-full py-3 rounded-xl font-black mt-2 disabled:opacity-40 ${
+                isFull ? 'btn-gold' : 'bg-yellow-600/20 border border-yellow-500/40 text-yellow-400 hover:bg-yellow-600/30 transition-colors'
+              }`}
             >
-              {triggering ? 'Triggering Draw...' : '🎲 Trigger Draw Now'}
+              {triggering
+                ? 'Running Draw...'
+                : isFull
+                  ? '🎲 Trigger Draw Now'
+                  : `⚡ Force Draw (${fillPct}% filled)`}
             </button>
           )}
           {approved.length === 0 && lottery.status === 'ACTIVE' && (
-            <div className="text-yellow-600 text-xs text-center">No approved tickets yet</div>
+            <div className="text-yellow-600 text-xs text-center">No approved tickets yet — draw cannot run</div>
           )}
         </div>
 
