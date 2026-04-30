@@ -29,14 +29,18 @@ export default async function PredictionPage({ params }: { params: { id: string 
   const commission = total * (question.commission / 100)
   const prizePool = total - commission
 
-  const userBet = session ? question.bets.find(b => b.userId === session.id) : null
+  // Find user's bet (including pending) so we don't let them bet twice
+  const userBet = session ? await prisma.questionBet.findFirst({
+    where: { questionId: params.id, userId: session.id, utrStatus: { not: 'REJECTED' } },
+    select: { option: true, amount: true, utrStatus: true },
+  }) : null
   const isResolved = question.status === 'RESOLVED'
   const winnerOption = question.winningOption
 
   // If user won and is resolved, show their payout
   const userIsWinner = userBet && isResolved && userBet.option === winnerOption
   const winnerPool = question.bets.filter(b => b.option === winnerOption).reduce((s, b) => s + b.amount, 0)
-  const userPayout = userBet && userIsWinner && winnerPool > 0
+  const userPayout = userBet && userIsWinner && winnerPool > 0 && userBet.utrStatus === 'APPROVED'
     ? Math.round((userBet.amount / winnerPool) * prizePool * 100) / 100
     : 0
 
