@@ -8,15 +8,22 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  name         String
-  email        String        @unique
-  password     String
-  isAdmin      Boolean       @default(false)
-  isBanned     Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  tickets      Ticket[]
-  questionBets QuestionBet[]
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  password           String
+  isAdmin            Boolean             @default(false)
+  isBanned           Boolean             @default(false)
+  balance            Float               @default(0)
+  createdAt          DateTime            @default(now())
+  tickets            Ticket[]
+  questionBets       QuestionBet[]
+  colorBets          ColorBet[]
+  crashBets          CrashBet[]
+  diceGames          DiceGame[]
+  transactions       Transaction[]
+  depositRequests    DepositRequest[]
+  withdrawalRequests WithdrawalRequest[]
 }
 
 model Lottery {
@@ -122,4 +129,112 @@ model QuestionBet {
 model SiteSetting {
   key   String @id
   value String
+}
+
+// --- Wallet System ---
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  type        String   // deposit | withdraw | game_win | game_loss | refund
+  amount      Float    // always positive; direction determined by type
+  balanceAfter Float
+  description String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+model DepositRequest {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  amount          Float
+  utrNumber       String
+  status          String   @default("PENDING")  // PENDING | APPROVED | REJECTED
+  rejectionReason String   @default("")
+  createdAt       DateTime @default(now())
+}
+
+model WithdrawalRequest {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  amount     Float
+  upiId      String
+  status     String    @default("PENDING")  // PENDING | PAID | REJECTED
+  paymentRef String    @default("")
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
+}
+
+// --- Auto Games ---
+
+model CrashRound {
+  id         String     @id @default(cuid())
+  status     String     @default("WAITING")  // WAITING | IN_PROGRESS | CRASHED
+  crashPoint Float
+  startedAt  DateTime?
+  crashedAt  DateTime?
+  createdAt  DateTime   @default(now())
+  bets       CrashBet[]
+}
+
+model CrashBet {
+  id          String     @id @default(cuid())
+  roundId     String
+  round       CrashRound @relation(fields: [roundId], references: [id])
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  betAmount   Float
+  cashedOutAt Float?     // multiplier at cashout
+  payout      Float?
+  status      String     @default("ACTIVE")  // ACTIVE | CASHED_OUT | LOST
+  createdAt   DateTime   @default(now())
+}
+
+model DiceGame {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  betAmount   Float
+  prediction  String   // "over" | "under"
+  threshold   Int      // 1-98
+  result      Int      // 0-100 rolled
+  multiplier  Float
+  payout      Float?
+  won         Boolean
+  createdAt   DateTime @default(now())
+}
+
+// --- Color Game ---
+
+model ColorRound {
+  id         String     @id @default(cuid())
+  title      String     @default("Color Game")
+  status     String     @default("OPEN")    // OPEN | RESOLVED
+  result     String     @default("")         // "red" | "green" | "violet"
+  upiId      String     @default("")
+  qrImage    String     @default("")
+  createdAt  DateTime   @default(now())
+  resolvedAt DateTime?
+  bets       ColorBet[]
+}
+
+model ColorBet {
+  id                 String     @id @default(cuid())
+  roundId            String
+  round              ColorRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User       @relation(fields: [userId], references: [id])
+  color              String     // "red" | "green" | "violet"
+  amount             Float
+  utrNumber          String
+  utrStatus          String     @default("PENDING")  // PENDING | APPROVED | REJECTED
+  utrRejectionReason String     @default("")
+  payout             Float?
+  payoutStatus       String     @default("UNPAID")   // UNPAID | CLAIMED | PAID
+  claimUpiId         String     @default("")
+  paidAt             DateTime?
+  paymentRef         String     @default("")
+  createdAt          DateTime   @default(now())
 }

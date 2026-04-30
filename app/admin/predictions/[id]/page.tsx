@@ -5,13 +5,12 @@ import Link from 'next/link'
 
 interface Bet {
   id: string; option: string; amount: number; utrNumber: string; utrStatus: string
-  payout: number | null; payoutStatus: string; claimUpiId: string
-  user: { name: string; email: string }
+  utrRejectionReason: string; payout: number | null; payoutStatus: string; claimUpiId: string
+  user: { name: string; email: string }; createdAt: string
 }
 interface Question {
   id: string; question: string; optionA: string; optionB: string
-  status: string; winningOption: string; commission: number
-  bets: Bet[]
+  status: string; winningOption: string; commission: number; bets: Bet[]
 }
 
 export default function AdminPredictionDetail() {
@@ -19,13 +18,13 @@ export default function AdminPredictionDetail() {
   const [q, setQ] = useState<Question | null>(null)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
-  const [payRef, setPayRef] = useState('')
+  const [payRef, setPayRef] = useState<Record<string, string>>({})
+  const [rejectReason, setRejectReason] = useState<Record<string, string>>({})
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
 
   const load = async () => {
-    const res = await fetch(`/api/admin/predictions`)
-    const all = await res.json()
-    const found = all.find((x: Question) => x.id === id)
-    if (found) setQ(found)
+    const res = await fetch(`/api/admin/predictions/${id}`)
+    if (res.ok) setQ(await res.json())
   }
 
   useEffect(() => { load() }, [id])
@@ -40,9 +39,7 @@ export default function AdminPredictionDetail() {
     })
     const data = await res.json()
     setLoading(null)
-    setMsg(data.ok
-      ? `Resolved! ${data.winners} winners share ₹${data.prizePool?.toFixed(0)} prize pool.`
-      : data.error)
+    setMsg(data.ok ? `Resolved! ${data.winners} winners share ₹${data.prizePool?.toFixed(0)} prize pool.` : data.error)
     load()
   }
 
@@ -51,9 +48,10 @@ export default function AdminPredictionDetail() {
     await fetch(`/api/admin/predictions/utr/${betId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ action, reason: rejectReason[betId] ?? '' }),
     })
     setLoading(null)
+    setRejectingId(null)
     load()
   }
 
@@ -61,9 +59,9 @@ export default function AdminPredictionDetail() {
     await fetch('/api/admin/predictions/payouts', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ betId, paymentRef: payRef }),
+      body: JSON.stringify({ betId, paymentRef: payRef[betId] ?? '' }),
     })
-    setPayRef('')
+    setPayRef(p => ({ ...p, [betId]: '' }))
     load()
   }
 
@@ -93,16 +91,17 @@ export default function AdminPredictionDetail() {
           <h3 className="text-gold-400 font-bold mb-3">Pool Stats</h3>
           <div className="space-y-2 text-sm">
             {[
-              ['Option A', `${q.optionA} — ₹${poolA.toLocaleString('en-IN')}`],
-              ['Option B', `${q.optionB} — ₹${poolB.toLocaleString('en-IN')}`],
+              ['Option A — ' + q.optionA, `₹${poolA.toLocaleString('en-IN')}`],
+              ['Option B — ' + q.optionB, `₹${poolB.toLocaleString('en-IN')}`],
               ['Total Pool', `₹${total.toLocaleString('en-IN')}`],
-              ['House ('+q.commission+'%)', `₹${(total * q.commission / 100).toFixed(0)}`],
+              [`House (${q.commission}%)`, `₹${(total * q.commission / 100).toFixed(0)}`],
               ['Prize Pool', `₹${prizePool.toFixed(0)}`],
-              ['Pending UTRs', pending.length],
+              ['Pending UTRs', String(pending.length)],
+              ['Total Participants', String(q.bets.length)],
             ].map(([k, v]) => (
-              <div key={String(k)} className="flex justify-between border-b border-gray-900 pb-2">
+              <div key={k} className="flex justify-between border-b border-gray-900 pb-2 last:border-0">
                 <span className="text-gray-500">{k}</span>
-                <span className="text-white font-bold">{v}</span>
+                <span className={`font-bold ${k === 'Pending UTRs' && pending.length > 0 ? 'text-yellow-400' : 'text-white'}`}>{v}</span>
               </div>
             ))}
           </div>
@@ -133,28 +132,53 @@ export default function AdminPredictionDetail() {
 
         {/* Pending UTRs */}
         <div className="card p-5">
-          <h3 className="text-gold-400 font-bold mb-3">Pending UTRs ({pending.length})</h3>
+          <h3 className="text-gold-400 font-bold mb-3 flex items-center gap-2">
+            Pending UTRs
+            {pending.length > 0 && (
+              <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full border border-yellow-500/30 animate-pulse">
+                {pending.length}
+              </span>
+            )}
+          </h3>
           {pending.length === 0
             ? <div className="text-gray-700 text-sm">No pending verifications</div>
             : (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {pending.map(b => (
-                  <div key={b.id} className="bg-casino-950 rounded-xl p-3">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-white text-sm font-bold">{b.user.name}</span>
+                  <div key={b.id} className="bg-casino-950 rounded-xl p-3 border border-yellow-500/10">
+                    <div className="flex justify-between items-start mb-1">
+                      <div>
+                        <span className="text-white text-sm font-bold">{b.user.name}</span>
+                        <div className="text-gray-600 text-xs">{b.user.email}</div>
+                      </div>
                       <span className={`text-xs font-bold ${b.option === 'A' ? 'text-green-400' : 'text-red-400'}`}>
                         {b.option === 'A' ? q.optionA : q.optionB}
                       </span>
                     </div>
-                    <div className="text-gray-500 text-xs mb-2">₹{b.amount} · UTR: {b.utrNumber}</div>
+                    <div className="text-gray-400 text-sm mb-1">₹{b.amount.toLocaleString('en-IN')}</div>
+                    <div className="font-mono text-yellow-300 text-xs bg-black/30 rounded px-2 py-1 mb-2">UTR: {b.utrNumber}</div>
+                    <div className="text-gray-700 text-xs mb-2">{new Date(b.createdAt).toLocaleString('en-IN')}</div>
                     <div className="flex gap-2">
                       <button onClick={() => verifyBet(b.id, 'approve')} disabled={loading === b.id} className="flex-1 py-1.5 text-xs font-black btn-gold rounded-lg">
                         {loading === b.id ? '...' : '✓ Approve'}
                       </button>
-                      <button onClick={() => verifyBet(b.id, 'reject')} disabled={loading === b.id} className="flex-1 py-1.5 text-xs font-bold btn-danger rounded-lg">
+                      <button onClick={() => setRejectingId(rejectingId === b.id ? null : b.id)} className="flex-1 py-1.5 text-xs font-bold btn-danger rounded-lg">
                         ✗ Reject
                       </button>
                     </div>
+                    {rejectingId === b.id && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          className="input-dark text-xs py-1 flex-1"
+                          placeholder="Reason (e.g. payment not found)"
+                          value={rejectReason[b.id] ?? ''}
+                          onChange={e => setRejectReason(p => ({ ...p, [b.id]: e.target.value }))}
+                        />
+                        <button onClick={() => verifyBet(b.id, 'reject')} disabled={loading === b.id} className="btn-danger px-3 py-1 text-xs rounded-lg">
+                          Confirm
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -166,35 +190,41 @@ export default function AdminPredictionDetail() {
       {/* All bets */}
       <div className="card overflow-hidden">
         <div className="p-4 border-b border-gray-900">
-          <h3 className="text-gold-400 font-bold">All Bets ({q.bets.length})</h3>
+          <h3 className="text-gold-400 font-bold">All Participants ({q.bets.length})</h3>
         </div>
-        <table className="admin-table">
-          <thead><tr><th>User</th><th>Pick</th><th>Amount</th><th>UTR Status</th><th>Payout</th><th>Pay Action</th></tr></thead>
-          <tbody>
-            {q.bets.map(b => (
-              <tr key={b.id}>
-                <td>
-                  <div className="text-white text-sm font-medium">{b.user.name}</div>
-                  <div className="text-gray-600 text-xs">{b.user.email}</div>
-                </td>
-                <td><span className={`font-bold text-sm ${b.option === 'A' ? 'text-green-400' : 'text-red-400'}`}>{b.option === 'A' ? q.optionA : q.optionB}</span></td>
-                <td className="font-bold">₹{b.amount.toLocaleString('en-IN')}</td>
-                <td><span className={`text-xs px-2 py-0.5 rounded-full ${b.utrStatus === 'APPROVED' ? 'badge-approved' : b.utrStatus === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>{b.utrStatus}</span></td>
-                <td className="text-gold-400 font-bold">{b.payout ? `₹${b.payout.toLocaleString('en-IN')}` : '—'}</td>
-                <td>
-                  {b.payoutStatus === 'CLAIMED' && (
-                    <div className="flex gap-1">
-                      <input className="input-dark text-xs py-1 w-24" placeholder="UTR ref" value={payRef} onChange={e => setPayRef(e.target.value)} />
-                      <button onClick={() => markPaid(b.id)} className="btn-gold px-2 py-1 text-xs rounded">Pay</button>
-                    </div>
-                  )}
-                  {b.payoutStatus === 'PAID' && <span className="text-green-400 text-xs">✓ Paid</span>}
-                  {b.payoutStatus === 'UNPAID' && b.payout && <span className="text-yellow-600 text-xs">Awaiting claim</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="admin-table">
+            <thead><tr><th>User</th><th>Pick</th><th>Amount</th><th>UTR</th><th>Status</th><th>Payout</th><th>Pay Action</th></tr></thead>
+            <tbody>
+              {q.bets.map(b => (
+                <tr key={b.id}>
+                  <td>
+                    <div className="text-white text-sm font-medium">{b.user.name}</div>
+                    <div className="text-gray-600 text-xs">{b.user.email}</div>
+                  </td>
+                  <td><span className={`font-bold text-sm ${b.option === 'A' ? 'text-green-400' : 'text-red-400'}`}>{b.option === 'A' ? q.optionA : q.optionB}</span></td>
+                  <td className="font-bold">₹{b.amount.toLocaleString('en-IN')}</td>
+                  <td><span className="font-mono text-xs text-yellow-300">{b.utrNumber}</span></td>
+                  <td><span className={`text-xs px-2 py-0.5 rounded-full ${b.utrStatus === 'APPROVED' ? 'badge-approved' : b.utrStatus === 'REJECTED' ? 'badge-rejected' : 'badge-pending'}`}>{b.utrStatus}</span></td>
+                  <td className="text-gold-400 font-bold">{b.payout ? `₹${b.payout.toLocaleString('en-IN')}` : '—'}</td>
+                  <td>
+                    {b.payoutStatus === 'CLAIMED' && (
+                      <div className="flex gap-1">
+                        <input className="input-dark text-xs py-1 w-24" placeholder="UTR ref" value={payRef[b.id] ?? ''} onChange={e => setPayRef(p => ({ ...p, [b.id]: e.target.value }))} />
+                        <button onClick={() => markPaid(b.id)} className="btn-gold px-2 py-1 text-xs rounded">Pay</button>
+                      </div>
+                    )}
+                    {b.payoutStatus === 'PAID' && <span className="text-green-400 text-xs">✓ Paid</span>}
+                    {b.payoutStatus === 'UNPAID' && b.payout && <span className="text-yellow-600 text-xs">Awaiting claim</span>}
+                    {b.payoutStatus === 'UNPAID' && !b.payout && b.utrStatus === 'REJECTED' && (
+                      <span className="text-red-600 text-xs">Rejected</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

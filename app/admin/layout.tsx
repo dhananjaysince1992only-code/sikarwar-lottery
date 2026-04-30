@@ -3,8 +3,11 @@ import Link from 'next/link'
 const links = [
   { href: '/admin', label: 'Dashboard', icon: '📊' },
   { href: '/admin/lotteries', label: 'Lotteries', icon: '🎰' },
+  { href: '/admin/color-game', label: 'Color Game', icon: '🎨' },
   { href: '/admin/predictions', label: 'Predictions', icon: '🔮' },
   { href: '/admin/utr-queue', label: 'UTR Queue', icon: '🔔' },
+  { href: '/admin/deposits', label: 'Deposits', icon: '💳' },
+  { href: '/admin/withdrawals', label: 'Withdrawals', icon: '💸' },
   { href: '/admin/payouts', label: 'Payouts', icon: '💰' },
   { href: '/admin/users', label: 'Users', icon: '👥' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️' },

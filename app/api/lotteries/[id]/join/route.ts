@@ -17,11 +17,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (lottery.status !== 'ACTIVE') return NextResponse.json({ error: 'Lottery is not accepting entries' }, { status: 400 })
   if (lottery._count.tickets >= lottery.maxParticipants) return NextResponse.json({ error: 'Lottery is full' }, { status: 400 })
 
-  const existing = await prisma.ticket.findFirst({
-    where: { lotteryId: params.id, userId: session.id, utrStatus: { not: 'REJECTED' } },
-  })
-  if (existing) return NextResponse.json({ error: 'You already have a ticket for this lottery' }, { status: 400 })
-
   const ticket = await prisma.ticket.create({
     data: { lotteryId: params.id, userId: session.id, utrNumber: utrNumber.trim() },
   })

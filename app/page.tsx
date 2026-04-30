@@ -32,6 +32,17 @@ async function getOpenQuestions() {
   })
 }
 
+async function getOpenColorRounds() {
+  return prisma.colorRound.findMany({
+    where: { status: 'OPEN' },
+    include: {
+      bets: { where: { utrStatus: 'APPROVED' }, select: { color: true, amount: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 3,
+  })
+}
+
 async function getRecentWinners() {
   return prisma.ticket.findMany({
     where: { isWinner: true, scratchedAt: { not: null } },
@@ -54,10 +65,11 @@ async function getUserStats(userId: string) {
 }
 
 export default async function HomePage() {
-  const [{ lotteries, settings }, recentWinners, openQuestions, session] = await Promise.all([
+  const [{ lotteries, settings }, recentWinners, openQuestions, openColorRounds, session] = await Promise.all([
     getData(),
     getRecentWinners(),
     getOpenQuestions(),
+    getOpenColorRounds(),
     getSession(),
   ])
 
@@ -185,6 +197,109 @@ export default async function HomePage() {
           {lotteries.map(l => (
             <LotteryCard key={l.id} lottery={l as Parameters<typeof LotteryCard>[0]['lottery']} loggedIn={!!session} />
           ))}
+        </div>
+      )}
+
+      {/* Auto Games — Crash & Dice */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-black text-white flex items-center gap-2">
+            <span className="w-3 h-3 bg-orange-500 rounded-full animate-pulse" />
+            Casino Games
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Link href="/crash">
+            <div className="card p-5 hover:border-orange-500/40 transition-all cursor-pointer group bg-gradient-to-br from-orange-950/20 to-casino-800">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="text-2xl mb-1">🚀</div>
+                  <h3 className="text-white font-black text-xl group-hover:text-orange-400 transition-colors">Crash</h3>
+                  <p className="text-gray-500 text-xs mt-0.5">Cash out before it crashes — win up to 1000×</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-green-400 font-black text-lg">95%</div>
+                  <div className="text-gray-600 text-xs">RTP</div>
+                </div>
+              </div>
+              <div className="flex gap-3 text-xs">
+                <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2.5 py-1 rounded-full">Live Multiplier</span>
+                <span className="bg-orange-500/10 border border-orange-500/20 text-orange-400 px-2.5 py-1 rounded-full">Instant Cashout</span>
+              </div>
+              <div className="mt-3 text-orange-400 text-sm font-bold group-hover:translate-x-1 transition-transform">Play Now →</div>
+            </div>
+          </Link>
+
+          <Link href="/dice">
+            <div className="card p-5 hover:border-blue-500/40 transition-all cursor-pointer group bg-gradient-to-br from-blue-950/20 to-casino-800">
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="text-2xl mb-1">🎲</div>
+                  <h3 className="text-white font-black text-xl group-hover:text-blue-400 transition-colors">Dice</h3>
+                  <p className="text-gray-500 text-xs mt-0.5">Roll over or under — set your own odds</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-green-400 font-black text-lg">95%</div>
+                  <div className="text-gray-600 text-xs">RTP</div>
+                </div>
+              </div>
+              <div className="flex gap-3 text-xs">
+                <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2.5 py-1 rounded-full">Instant Result</span>
+                <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-2.5 py-1 rounded-full">Custom Odds</span>
+              </div>
+              <div className="mt-3 text-blue-400 text-sm font-bold group-hover:translate-x-1 transition-transform">Play Now →</div>
+            </div>
+          </Link>
+        </div>
+      </div>
+
+      {/* Color Game preview */}
+      {openColorRounds.length > 0 && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-black text-white flex items-center gap-2">
+              <span className="w-3 h-3 bg-violet-500 rounded-full animate-pulse" />
+              Color Game
+            </h2>
+            <Link href="/color-game" className="text-sm text-violet-400 hover:text-violet-300 transition-colors font-bold">
+              View All →
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {openColorRounds.map(r => {
+              const poolRed = r.bets.filter(b => b.color === 'red').reduce((s, b) => s + b.amount, 0)
+              const poolGreen = r.bets.filter(b => b.color === 'green').reduce((s, b) => s + b.amount, 0)
+              const poolViolet = r.bets.filter(b => b.color === 'violet').reduce((s, b) => s + b.amount, 0)
+              const total = poolRed + poolGreen + poolViolet
+              return (
+                <Link key={r.id} href={`/color-game/${r.id}`}>
+                  <div className="card p-4 hover:border-violet-500/40 transition-all cursor-pointer group">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-xs font-black bg-green-500/20 text-green-400 border border-green-500/30 px-2 py-0.5 rounded-full">OPEN</span>
+                      <span className="text-white font-bold group-hover:text-violet-400 transition-colors truncate text-sm">{r.title}</span>
+                    </div>
+                    <div className="flex gap-1.5 mb-3">
+                      <div className="flex-1 text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2">
+                        <div className="text-xs text-red-400 font-black">🔴 1.9×</div>
+                        <div className="text-xs text-gray-500">₹{poolRed > 0 ? poolRed.toLocaleString('en-IN') : '—'}</div>
+                      </div>
+                      <div className="flex-1 text-center bg-green-500/10 border border-green-500/20 rounded-lg py-2">
+                        <div className="text-xs text-green-400 font-black">🟢 1.9×</div>
+                        <div className="text-xs text-gray-500">₹{poolGreen > 0 ? poolGreen.toLocaleString('en-IN') : '—'}</div>
+                      </div>
+                      <div className="flex-1 text-center bg-violet-500/10 border border-violet-500/20 rounded-lg py-2">
+                        <div className="text-xs text-violet-400 font-black">🟣 4.5×</div>
+                        <div className="text-xs text-gray-500">₹{poolViolet > 0 ? poolViolet.toLocaleString('en-IN') : '—'}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-600 text-center">
+                      Total: <span className="text-gold-400 font-bold">₹{total > 0 ? total.toLocaleString('en-IN') : '0'}</span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
         </div>
       )}
 

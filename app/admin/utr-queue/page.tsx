@@ -1,114 +1,270 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-interface Ticket {
-  id: string
-  utrNumber: string
-  createdAt: string
+interface LotteryTicket {
+  id: string; utrNumber: string; createdAt: string
   user: { name: string; email: string }
   lottery: { name: string; ticketPrice: number }
 }
 
+interface PredictionBet {
+  id: string; utrNumber: string; amount: number; option: string; createdAt: string
+  user: { name: string; email: string }
+  question: { id: string; question: string; optionA: string; optionB: string }
+}
+
+interface ColorBet {
+  id: string; utrNumber: string; amount: number; color: string; createdAt: string
+  user: { name: string; email: string }
+  round: { id: string; title: string }
+}
+
 export default function UTRQueue() {
-  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [tickets, setTickets] = useState<LotteryTicket[]>([])
+  const [bets, setBets] = useState<PredictionBet[]>([])
+  const [colorBets, setColorBets] = useState<ColorBet[]>([])
+  const [tab, setTab] = useState<'lottery' | 'predictions' | 'color'>('lottery')
   const [rejecting, setRejecting] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [loading, setLoading] = useState<string | null>(null)
 
   const load = async () => {
-    const res = await fetch('/api/admin/utr')
-    const data = await res.json()
-    setTickets(data)
+    const [t, b, c] = await Promise.all([
+      fetch('/api/admin/utr').then(r => r.json()),
+      fetch('/api/admin/predictions/utr').then(r => r.json()),
+      fetch('/api/admin/color-game/utr').then(r => r.json()),
+    ])
+    if (Array.isArray(t)) setTickets(t)
+    if (Array.isArray(b)) setBets(b)
+    if (Array.isArray(c)) setColorBets(c)
   }
 
   useEffect(() => { load(); const i = setInterval(load, 15000); return () => clearInterval(i) }, [])
 
-  const approve = async (id: string) => {
+  const approveLottery = async (id: string) => {
     setLoading(id)
     await fetch(`/api/admin/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) })
-    setLoading(null)
-    load()
+    setLoading(null); load()
   }
-
-  const reject = async (id: string) => {
+  const rejectLottery = async (id: string) => {
     setLoading(id)
     await fetch(`/api/admin/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reject', reason }) })
-    setLoading(null)
-    setRejecting(null)
-    setReason('')
-    load()
+    setLoading(null); setRejecting(null); setReason(''); load()
   }
+  const approvePrediction = async (id: string) => {
+    setLoading(id)
+    await fetch(`/api/admin/predictions/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) })
+    setLoading(null); load()
+  }
+  const rejectPrediction = async (id: string) => {
+    setLoading(id)
+    await fetch(`/api/admin/predictions/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reject', reason }) })
+    setLoading(null); setRejecting(null); setReason(''); load()
+  }
+  const approveColor = async (id: string, roundId: string) => {
+    setLoading(id)
+    await fetch(`/api/admin/color-game/${roundId}/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve' }) })
+    setLoading(null); load()
+  }
+  const rejectColor = async (id: string, roundId: string) => {
+    setLoading(id)
+    await fetch(`/api/admin/color-game/${roundId}/utr/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reject', reason }) })
+    setLoading(null); setRejecting(null); setReason(''); load()
+  }
+
+  const totalPending = tickets.length + bets.length + colorBets.length
+
+  const tabs = [
+    { key: 'lottery', label: 'Lottery', count: tickets.length },
+    { key: 'predictions', label: 'Predictions', count: bets.length },
+    { key: 'color', label: 'Color Game', count: colorBets.length },
+  ] as const
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-black text-white">UTR Verification Queue</h1>
-        {tickets.length > 0 && (
+        {totalPending > 0 && (
           <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-2 py-1 rounded-full font-bold animate-pulse">
-            {tickets.length} pending
+            {totalPending} pending
           </span>
         )}
       </div>
 
-      {tickets.length === 0 ? (
-        <div className="card p-12 text-center">
-          <div className="text-4xl mb-4">✅</div>
-          <div className="text-gray-400 font-bold">Queue is clear</div>
-          <div className="text-gray-600 text-sm mt-1">All UTRs have been verified</div>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {tickets.map(t => (
-            <div key={t.id} className="card p-5">
-              <div className="flex items-start gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-white font-bold">{t.user.name}</span>
-                    <span className="text-gray-600 text-xs">{t.user.email}</span>
-                  </div>
-                  <div className="text-gray-500 text-sm mb-1">
-                    Lottery: <span className="text-purple-300">{t.lottery.name}</span> ·
-                    Amount: <span className="text-gold-400 font-bold">₹{t.lottery.ticketPrice}</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-casino-950 rounded-xl px-3 py-2 w-fit">
-                    <span className="text-gray-500 text-xs">UTR:</span>
-                    <span className="font-mono text-white font-bold tracking-wider">{t.utrNumber}</span>
-                  </div>
-                  <div className="text-gray-700 text-xs mt-1">{new Date(t.createdAt).toLocaleString('en-IN')}</div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => approve(t.id)}
-                    disabled={loading === t.id}
-                    className="btn-gold px-4 py-2 text-sm rounded-lg font-black disabled:opacity-40"
-                  >
-                    {loading === t.id ? '...' : '✓ Approve'}
-                  </button>
-                  <button
-                    onClick={() => setRejecting(rejecting === t.id ? null : t.id)}
-                    className="btn-danger px-4 py-2 text-sm rounded-lg"
-                  >
-                    ✗ Reject
-                  </button>
-                </div>
-              </div>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${
+              tab === t.key
+                ? 'bg-purple-600/30 text-purple-300 border border-purple-500/40'
+                : 'text-gray-500 hover:text-gray-300 border border-transparent'
+            }`}
+          >
+            {t.label}
+            {t.count > 0 && (
+              <span className="bg-yellow-500/20 text-yellow-400 text-xs px-1.5 py-0.5 rounded-full border border-yellow-500/30">
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
 
-              {rejecting === t.id && (
-                <div className="mt-3 pt-3 border-t border-gray-800 flex gap-2">
-                  <input
-                    className="input-dark flex-1 text-sm py-2"
-                    placeholder="Rejection reason (e.g. Payment not received)"
-                    value={reason}
-                    onChange={e => setReason(e.target.value)}
-                  />
-                  <button onClick={() => reject(t.id)} disabled={loading === t.id} className="btn-danger px-4 py-2 text-sm rounded-lg">
-                    Confirm
-                  </button>
+      {/* Lottery tab */}
+      {tab === 'lottery' && (
+        tickets.length === 0 ? (
+          <div className="card p-12 text-center">
+            <div className="text-4xl mb-4">✅</div>
+            <div className="text-gray-400 font-bold">Lottery queue is clear</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {tickets.map(t => (
+              <div key={t.id} className="card p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-bold">{t.user.name}</span>
+                      <span className="text-gray-600 text-xs">{t.user.email}</span>
+                    </div>
+                    <div className="text-gray-500 text-sm mb-1">
+                      Lottery: <span className="text-purple-300">{t.lottery.name}</span> ·
+                      Amount: <span className="text-gold-400 font-bold">₹{t.lottery.ticketPrice}</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-casino-950 rounded-xl px-3 py-2 w-fit">
+                      <span className="text-gray-500 text-xs">UTR:</span>
+                      <span className="font-mono text-yellow-300 font-bold tracking-wider">{t.utrNumber}</span>
+                    </div>
+                    <div className="text-gray-700 text-xs mt-1">{new Date(t.createdAt).toLocaleString('en-IN')}</div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={() => approveLottery(t.id)} disabled={loading === t.id} className="btn-gold px-4 py-2 text-sm rounded-lg font-black disabled:opacity-40">
+                      {loading === t.id ? '...' : '✓ Approve'}
+                    </button>
+                    <button onClick={() => setRejecting(rejecting === t.id ? null : t.id)} className="btn-danger px-4 py-2 text-sm rounded-lg">
+                      ✗ Reject
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+                {rejecting === t.id && (
+                  <div className="mt-3 pt-3 border-t border-gray-800 flex gap-2">
+                    <input className="input-dark flex-1 text-sm py-2" placeholder="Rejection reason" value={reason} onChange={e => setReason(e.target.value)} />
+                    <button onClick={() => rejectLottery(t.id)} disabled={loading === t.id} className="btn-danger px-4 py-2 text-sm rounded-lg">Confirm</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Predictions tab */}
+      {tab === 'predictions' && (
+        bets.length === 0 ? (
+          <div className="card p-12 text-center">
+            <div className="text-4xl mb-4">✅</div>
+            <div className="text-gray-400 font-bold">Predictions queue is clear</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {bets.map(b => (
+              <div key={b.id} className="card p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white font-bold">{b.user.name}</span>
+                      <span className="text-gray-600 text-xs">{b.user.email}</span>
+                    </div>
+                    <div className="text-gray-400 text-sm mb-1 line-clamp-1">{b.question.question}</div>
+                    <div className="text-gray-500 text-sm mb-1">
+                      Pick: <span className={`font-bold ${b.option === 'A' ? 'text-green-400' : 'text-red-400'}`}>
+                        {b.option === 'A' ? b.question.optionA : b.question.optionB}
+                      </span> · Amount: <span className="text-gold-400 font-bold">₹{b.amount}</span>
+                    </div>
+                    <div className="flex items-center gap-2 bg-casino-950 rounded-xl px-3 py-2 w-fit">
+                      <span className="text-gray-500 text-xs">UTR:</span>
+                      <span className="font-mono text-yellow-300 font-bold tracking-wider">{b.utrNumber}</span>
+                    </div>
+                    <div className="text-gray-700 text-xs mt-1">{new Date(b.createdAt).toLocaleString('en-IN')}</div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <button onClick={() => approvePrediction(b.id)} disabled={loading === b.id} className="btn-gold px-4 py-2 text-sm rounded-lg font-black disabled:opacity-40">
+                      {loading === b.id ? '...' : '✓ Approve'}
+                    </button>
+                    <button onClick={() => setRejecting(rejecting === b.id ? null : b.id)} className="btn-danger px-4 py-2 text-sm rounded-lg">
+                      ✗ Reject
+                    </button>
+                  </div>
+                </div>
+                {rejecting === b.id && (
+                  <div className="mt-3 pt-3 border-t border-gray-800 flex gap-2">
+                    <input className="input-dark flex-1 text-sm py-2" placeholder="Rejection reason" value={reason} onChange={e => setReason(e.target.value)} />
+                    <button onClick={() => rejectPrediction(b.id)} disabled={loading === b.id} className="btn-danger px-4 py-2 text-sm rounded-lg">Confirm</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Color Game tab */}
+      {tab === 'color' && (
+        colorBets.length === 0 ? (
+          <div className="card p-12 text-center">
+            <div className="text-4xl mb-4">✅</div>
+            <div className="text-gray-400 font-bold">Color game queue is clear</div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {colorBets.map(b => {
+              const colorDot: Record<string, string> = { red: 'bg-red-500', green: 'bg-green-500', violet: 'bg-violet-500' }
+              const colorText: Record<string, string> = { red: 'text-red-400', green: 'text-green-400', violet: 'text-violet-400' }
+              return (
+                <div key={b.id} className="card p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-white font-bold">{b.user.name}</span>
+                        <span className="text-gray-600 text-xs">{b.user.email}</span>
+                      </div>
+                      <div className="text-gray-400 text-sm mb-1">{b.round.title}</div>
+                      <div className="flex items-center gap-2 text-sm mb-1">
+                        <span className="text-gray-500">Color:</span>
+                        <span className={`w-3 h-3 rounded-full ${colorDot[b.color] ?? 'bg-gray-500'}`} />
+                        <span className={`font-bold capitalize ${colorText[b.color] ?? 'text-gray-300'}`}>{b.color}</span>
+                        <span className="text-gray-600">·</span>
+                        <span className="text-gold-400 font-bold">₹{b.amount}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-casino-950 rounded-xl px-3 py-2 w-fit">
+                        <span className="text-gray-500 text-xs">UTR:</span>
+                        <span className="font-mono text-yellow-300 font-bold tracking-wider">{b.utrNumber}</span>
+                      </div>
+                      <div className="text-gray-700 text-xs mt-1">{new Date(b.createdAt).toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={() => approveColor(b.id, b.round.id)} disabled={loading === b.id} className="btn-gold px-4 py-2 text-sm rounded-lg font-black disabled:opacity-40">
+                        {loading === b.id ? '...' : '✓ Approve'}
+                      </button>
+                      <button onClick={() => setRejecting(rejecting === b.id ? null : b.id)} className="btn-danger px-4 py-2 text-sm rounded-lg">
+                        ✗ Reject
+                      </button>
+                    </div>
+                  </div>
+                  {rejecting === b.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-800 flex gap-2">
+                      <input className="input-dark flex-1 text-sm py-2" placeholder="Rejection reason" value={reason} onChange={e => setReason(e.target.value)} />
+                      <button onClick={() => rejectColor(b.id, b.round.id)} disabled={loading === b.id} className="btn-danger px-4 py-2 text-sm rounded-lg">Confirm</button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
       )}
     </div>
   )
